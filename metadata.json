@@ -1,0 +1,11 @@
+{
+  "name": "Nailix - Cyber-Gaudí Manicure Art Network",
+  "description": "Cross-platform manicure showcase and booking PWA blending Cyberpunk, Van Gogh & Gaudí aesthetics, with salon radar, calendar export, and simulated [SIM] peer jury and checkout.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
