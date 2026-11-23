@@ -8,8 +8,19 @@ import {buildContentSecurityPolicy} from './src/infrastructure/security/csp';
 export default defineConfig(({ mode }) => {
   const isProd = mode === 'production';
   const cspContent = buildContentSecurityPolicy(isProd ? 'production' : 'development');
+  const envMapsKey =
+    process.env.VITE_GOOGLE_MAPS_API_KEY?.trim() ||
+    process.env.GOOGLE_MAPS_API_KEY?.trim() ||
+    '';
 
   return {
+    ...(envMapsKey && !process.env.VITE_GOOGLE_MAPS_API_KEY
+      ? {
+          define: {
+            'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(envMapsKey),
+          },
+        }
+      : {}),
     plugins: [
       {
         name: 'csp-meta-injector',

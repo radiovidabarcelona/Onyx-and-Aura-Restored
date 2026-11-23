@@ -809,7 +809,9 @@ describe('Stage 4 · Sprint 4.4 Hardening Suite (Q-01 … Q-09)', () => {
         const showcaseApp = await createAppServer({ isProduction: true, mountFrontend: false });
         expect(showcaseApp.get('trust proxy')).toBe(false);
         expect(buildServerHttpCsp(true)).toContain("frame-ancestors 'self'");
-        expect(buildServerHttpCsp(true)).not.toContain('google.com');
+        expect(buildServerHttpCsp(true)).toContain('https://maps.googleapis.com');
+        expect(buildServerHttpCsp(true)).not.toContain('api.qrserver.com');
+        expect(buildServerHttpCsp(true)).not.toContain('fonts.googleapis.com');
 
         const showcaseServer = http.createServer(showcaseApp);
         await new Promise<void>(resolve => showcaseServer.listen(0, '127.0.0.1', () => resolve()));

@@ -421,7 +421,17 @@ export function validateReviews(
   return { ok: true, value: input as Review[] };
 }
 
-const ANCHOR_KEYS = new Set(['id', 'name', 'label', 'icon', 'address', 'coordinates', 'origin']);
+const ANCHOR_KEYS = new Set([
+  'id',
+  'name',
+  'label',
+  'icon',
+  'category',
+  'address',
+  'coordinates',
+  'placeId',
+  'origin',
+]);
 
 export function validateAnchorPointRecord(
   input: unknown,
@@ -435,7 +445,11 @@ export function validateAnchorPointRecord(
     !isNonEmptyString(input.name) ||
     !isPlainRecord(input.coordinates) ||
     !isFiniteNumber(input.coordinates.lat) ||
-    !isFiniteNumber(input.coordinates.lng)
+    !isFiniteNumber(input.coordinates.lng) ||
+    input.coordinates.lat < -90 ||
+    input.coordinates.lat > 90 ||
+    input.coordinates.lng < -180 ||
+    input.coordinates.lng > 180
   ) {
     return { ok: false, reason: 'Malformed ClientAnchorPoint fields' };
   }

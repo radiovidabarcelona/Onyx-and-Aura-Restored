@@ -92,13 +92,19 @@ export interface Artist {
 
 export type ThemeMode = 'dark' | 'light';
 
+export type AnchorCategory = 'home' | 'work' | 'club' | 'cafe' | 'gym' | 'studio' | 'custom';
+
+export const MAX_CLIENT_ANCHORS = 10;
+
 export interface ClientAnchorPoint {
-  id: 'home' | 'work' | 'custom';
+  id: string;
   name: string;
   label: string;
   icon: string;
+  category?: AnchorCategory;
   address: string;
   coordinates: { lat: number; lng: number };
+  placeId?: string;
   origin?: RecordOrigin;
 }
 

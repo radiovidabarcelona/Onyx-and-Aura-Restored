@@ -499,11 +499,16 @@ describe('Stage 3 / Sprint 3.2 — WebAuthn Identity, Cryptographic Verification
     );
 
     expect(directives['default-src']).toBe("'self'");
-    expect(directives['script-src']).toBe("'self'");
+    expect(directives['script-src']).toContain("'self'");
+    expect(directives['script-src']).toContain('https://maps.googleapis.com');
     expect(directives['script-src']).not.toContain("'unsafe-inline'");
-    expect(directives['connect-src']).toBe("'self'");
-    expect(directives['font-src']).toBe("'self' data:");
+    expect(directives['script-src']).not.toMatch(/\bhttps:\b/);
+    expect(directives['connect-src']).toContain("'self'");
+    expect(directives['connect-src']).toContain('https://places.googleapis.com');
+    expect(directives['connect-src']).toContain('https://routes.googleapis.com');
+    expect(directives['font-src']).toContain("'self' data:");
     expect(directives['img-src']).not.toMatch(/\bhttps:\b/);
+    expect(directives['worker-src']).toBe("'self' blob:");
     expect(directives['object-src']).toBe("'none'");
 
     const indexHtml = fs.readFileSync(

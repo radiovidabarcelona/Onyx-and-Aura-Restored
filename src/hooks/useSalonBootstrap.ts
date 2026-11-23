@@ -355,6 +355,38 @@ export function useSalonBootstrap({
     [refreshHealthFromRepo, repository]
   );
 
+  const addAnchorPoint = useCallback(
+    async (newPoint: Omit<ClientAnchorPoint, 'id' | 'origin'> & { id?: string }) => {
+      try {
+        const result = await repository.addAnchorPointWithOutbox(newPoint);
+        refreshHealthFromRepo({
+          anchorPoints: result.anchorPoints,
+          outbox: result.outbox,
+        });
+        return result.added;
+      } catch (err) {
+        refreshHealthFromRepo();
+        onStorageErrorRef.current?.(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
+    [refreshHealthFromRepo, repository]
+  );
+
+  const removeAnchorPoint = useCallback(
+    async (anchorId: string) => {
+      try {
+        const result = await repository.removeAnchorPointWithOutbox(anchorId);
+        refreshHealthFromRepo(result);
+      } catch (err) {
+        refreshHealthFromRepo();
+        onStorageErrorRef.current?.(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
+    [refreshHealthFromRepo, repository]
+  );
+
   const updateMasterSalon = useCallback(
     async (artistId: string, salonName: string, salonAddress: string, lat: number, lng: number) => {
       try {
@@ -489,6 +521,8 @@ export function useSalonBootstrap({
     persistSaves,
     saveReviewAndUpdateArtistRating,
     updateAnchorPoint,
+    addAnchorPoint,
+    removeAnchorPoint,
     updateMasterSalon,
     persistChats,
     persistAds,

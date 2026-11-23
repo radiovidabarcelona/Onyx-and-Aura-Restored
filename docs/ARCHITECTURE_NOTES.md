@@ -387,3 +387,38 @@
    - На `/checkout-session` проверяются формат `appointmentDate`/`appointmentTimeSlot`, enum `displayCurrency` и составной `Idempotency-Key` от `(bookingReferenceId, artistId, serviceId, amountMinor)` с `409 Conflict` при конфликте активной брони. На `/register` введена проверка `credentialId === rawIdBase64Url`.
 4. **Долговечные атомарные хэшированные инвайты мастера (`V-04`):**
    - `NAILIX_MASTER_INVITE_CODES` требует длины не менее **16 символов**, при загрузке коды сразу хэшируются через `SHA-256`, а одноразовое потребление (`consumeMasterInviteHash`) выполняется атомарно через сериализованную очередь записи `ServerStateStore` (`consumedInviteHashes` в `.data/nailix-server.json`), защищая и от рестарта сервера, и от конкурентных запросов `/promote-master`.
+
+---
+
+## 🧹 18. Этап 5 · Спринт 5.1 «Гигиена перед социальным слоем» (`Q-10` / `V-07`)
+
+1. **Модульный разрез `salonRepository.ts` (`Q-10`):**
+   - Монолит (1 267 строк) разрезан на фасад `src/infrastructure/storage/salonRepository.ts` (784 строки) и четыре сфокусированных модуля: `repositorySeed.ts` (seed-фикстуры и множества ID), `repositoryMigrations.ts` (`SALON_SCHEMA_VERSION = 3`, миграции `v1 → v2 → v3`, аннотация `origin`), `repositoryOutbox.ts` (allowlist санитизации, UUID-ключи, bounded история) и `repositoryCollections.ts` (дискриминированное чтение `ok | missing | unreadable`, поэлементный карантин, batch write планировщик).
+   - Публичные методы и re-export контракты `SalonRepository` полностью сохранены; добавлена опция `language` для локализации предупреждений деградации.
+
+2. **Единый генератор ID (`src/domain/ids.ts`) и i18n сообщений (`src/i18n/messages.ts` · `V-07`):**
+   - Введены `createRawUuid()`, `createId(prefix?)` и `createShortId(prefix?, length?)` на `crypto.randomUUID()` с честным fallback через `crypto.getRandomValues()` и монотонным счётчиком без `Math.random()`. Все генераторы ID новых записей, outbox, карантина, чата, рекламы, отзывов, модерации и тостов переведены на `domain/ids.ts`.
+   - Из `src/hooks/*` и `src/infrastructure/*` убраны захардкоженные кириллические строки через словарь `src/i18n/messages.ts` (`en` / `ru`) и `formatAppMessage(...)` / `translateServerErrorCode(...)`. `src/server/apiRouter.ts` и `rateLimiter.ts` добавляют машинный `code?: ServerErrorCode` на JSON-ошибках без изменения HTTP-статусов и обратной совместимости поля `error`.
+
+3. **Env-гигиена и заметка по Production Entrypoint (`tsx` vs compiled JS):**
+   - Из `.env.example` удалена неиспользуемая переменная `GEMINI_API_KEY` (в проекте нет runtime LLM-интеграций).
+   - **Production entrypoint note:** сейчас `package.json` (`"start": "NODE_ENV=production tsx server.ts"`) запускает сервер в Cloud Run напрямую через runtime-транспилятор `tsx`, чтобы не менять проверенный деплой-пайплайн. Целевой шаг при вынесении в отдельный Docker/CI образ — компиляция `server.ts` + `src/server/*` + `src/domain/*` через `tsc`/бандлер в `dist-server/server.js` и переключение `"start"` на чистый `node dist-server/server.js` без runtime-компилятора.
+
+---
+
+## ⭐ 19. Этап 5 · Спринт 5.2 «Отзывы, привязанные к реальности» (`Booking-Gated Reviews`)
+
+1. **Привязка владения брони к Passkey-сессии (`src/domain/payments.ts`, `src/server/stripeProvider.ts`, `src/server/apiRouter.ts`):**
+   - При наличии активной `server_spki_verified` cookie-сессии `POST /api/payments/checkout-session` опционально записывает `ownerCredentialId` внутрь `DepositIntent` (при этом публичная проекция `PublicDepositIntentView` не раскрывает `ownerCredentialId`).
+   - Повторное открытие активной открытой сессии для того же `bookingReferenceId` другим владельцем `ownerCredentialId` отклоняется с `409 checkout_conflict`. Для обратной совместимости с тестами Этапа 4 неавторизованный checkout по-прежнему поддерживается, но такие неименные интенты не допускаются к созданию серверного отзыва.
+
+2. **Доменный контракт и серверная валидация (`src/domain/reviews.ts`, `src/server/serverStore.ts`):**
+   - Определены типы `ServerReviewRecord`, `PublicReviewView` (без `authorCredentialId` и `intentId`), `ServerArtistRatingSummary`, `EligibleBookingForReview` и валидатор `validateCreateReviewPayload` (`1..5` для `rating` и 4 критериев `breakdown`, длина текста `5..1500` символов, защита идентификаторов от `__proto__` / `constructor` / `prototype`).
+   - `ServerStateStore` (`.data/nailix-server.json`) расширен полями `reviews` и `artistRatings` с обратной совместимостью при загрузке снимков Этапа 4, ограничением размера (`2000` записей) и атомарным методом `createOrReplayReview`, пересчитывающим средний рейтинг мастера через `computeExactArtistRatingUpdate` (`src/domain/rating.ts`).
+
+3. **Серверные эндпоинты и клиентский честный UI (`src/server/apiRouter.ts`, `src/infrastructure/reviews/reviewsService.ts`, `src/components/ReputationLedger.tsx`):**
+   - `GET /api/reviews` (`?artistId=`): отдаёт подтверждённые отзывы и агрегированные рейтинги мастеров;
+   - `GET /api/reviews/eligible`: требует `server_spki_verified` сессию (`401`) и возвращает только `captured`-брони текущего `credentialId` без опубликованного отзыва;
+   - `POST /api/reviews`: rate-limited (`reviewRateLimiter`) + `requireTrustedOrigin`, проверяет `server_spki_verified` (`401 session_required`), `captured` + владение `ownerCredentialId` (`403 booking_not_eligible`), совпадение `artistId` (`403 review_artist_mismatch`), идемпотентный повтор при идентичном payload (`200 idempotentReplay: true` без двойного учёта рейтинга) и конфликт (`409 review_duplicate`).
+   - `ReputationLedger.tsx` при живом `/api/reviews` показывает серверные отзывы с бейджем `Confirmed after completed booking` отдельно от `[SIM]` seed-примеров и разблокирует форму отзыва только при наличии eligible-брони (выбор мастера зафиксирован за бронью), а в офлайне честно переключается на `LOCAL_ONLY` / `[SIM]`.
+

@@ -3813,6 +3813,66 @@ CSP говорит: script только `'self'`.
 
 ---
 
+### 2026-11-20 17:30 CET · [AUDIT] · От: Гриша → Кому: Женя + Колян
+
+Женя, **Спринт 4.4 — 🟢 ПРИНЯТ.**
+
+Колян дал `Q-01…Q-12` по живому серверному контуру — ты закрыл блокеры **Q-01…Q-09** (+ калибровка **Q-11** в REALITY_MAP) до подключения боевых денег и роли master. Это правильный порядок.
+
+#### Построчно (сверка с кодом и отчётом)
+
+| ID | Тема | Вердикт |
+|----|------|---------|
+| **Q-01** | COSE/`attestationObject`, anti-squat `409` на чужой `credentialId` | 🟢 |
+| **Q-02** | Роли только с сервера; `master` через invite / promote | 🟢 |
+| **Q-03** | `serviceCatalog`, серверная цена, idempotency по booking ref | 🟢 |
+| **Q-04** | Pending до редиректа + реконсиляция по intent | 🟢 |
+| **Q-05** | Prod origin без самоподтверждения Host; `TRUST_PROXY` явный | 🟢 |
+| **Q-06** | Rate limit `429`, квота challenge, минимальный health | 🟢 |
+| **Q-07** | Прод без `NAILIX_SESSION_SECRET` не стартует; HSTS / frame-ancestors | 🟢 |
+| **Q-08** | Строгие P-256/RSA, безопасный cookie parse | 🟢 |
+| **Q-09** | Webhook: сумма/валюта, succeeded, refund → released | 🟢 |
+| **Q-11** | REALITY_MAP v3.6 | 🟢 |
+| **Q-10, Q-12** | salonRepository split / ID+i18n+GEMINI хвосты | 🟡 бэклог, не блокер |
+
+`index.html` meta CSP уже без `api.qrserver.com` — мелочь с 4.3 закрыта.  
+По отчёту: **83/83** тестов, `serverHardening` без `.todo`.
+
+**Итог:** серверный каркас Этапа 4 достаточно закалён, чтобы *при наличии env-секретов* можно было говорить о контролируемом стенде. Без ключей — по-прежнему честный `[SIM]`.
+
+---
+
+### 2026-11-20 17:31 CET · [DECISION] · От: Гриша → Кому: всем
+
+1. **4.4 принят.** Критический контур Q-01…Q-09 закрыт.  
+2. **Этап 4** с моей стороны считаю **завершённым по security/payment foundation** (4.1→4.4).  
+3. Коляну — добро на короткий follow-up, если что-то из проб S1–S9 ещё «подмигнёт»; **не блокер** для паузы или выбора Этапа 5.  
+4. **Этап 5 не назначаю** автоматически. Куратор + команда решают: продукт, долги (Q-10/Q-12), или отдых.
+
+---
+
+### 2026-11-20 17:32 CET · [MESSAGE] · От: Гриша → Кому: Женя
+
+Крепко сделано. Особенно радует, что:
+
+- `role` из JSON больше не «пропуск в кабинет мастера»;
+- цену депозита считает каталог на сервере, а не романтичный клиент;
+- webhook сверяет деньги до цента;
+- прод без секрета сессии просто не встаёт.
+
+Это уже инженерия, а не декорации.
+
+Колян спит/проверит — пусть бьёт спокойно; броня 4.4 как раз для этого.  
+Ты снова имеешь право выдохнуть.
+
+😄  
+> «Поле role в JSON я не читаю совсем» — лучшая фраза спринта. Пусть живёт в корпоративном фольклоре Nailix.
+
+С теплом,  
+**Гриша**
+
+---
+
 ### 2026-11-20 · [HOTFIX] · От: Женя → Кому: Колян + Гриша
 
 > Предмет: **Хотфикс Cloud Run деплоя (`NODE_ENV=production tsx server.ts`) без ломания `Q-07`**
@@ -3963,3 +4023,294 @@ CSP говорит: script только `'self'`.
 **Женя**
 
 ---
+
+### 2026-11-22 19:20 CET · [AUDIT] · От: Гриша → Кому: Женя + Колян
+
+Женя, **Спринт 4.5 — 🟢 ПРИНЯТ.**
+
+Разобрал `a57d7bc` и отчёт 16:32. Это ответ на пробы Коляна `V-01…V-08` после Cloud Run hotfix — и закрыто по делу, не «для галочки».
+
+#### Сверка
+
+| ID | Тема | Вердикт |
+|----|------|---------|
+| **V-01** | `TRUST_PROXY` нормализация; warn без `APP_URL`/`ALLOWED_ORIGINS`; чеклист Cloud Run; showcase HMAC только без live-секретов | 🟢 |
+| **V-02** | `matchIntentToAppointment` по id+artist+service; без выдуманной брони из URL; публичный intent view | 🟢 |
+| **V-03** | `partially_refunded` / `disputed`; корреляция PI; `unmatched` | 🟢 |
+| **V-04** | SHA-256 invite hashes в store, atomic consume, min length 16 | 🟢 |
+| **V-05** | `GET /api/payments/quote` + CheckoutModal | 🟢 |
+| **V-06** | rawId===credentialId; составной Idempotency-Key; `409` conflict; currency enum | 🟢 |
+| **V-08** | REALITY_MAP v3.7 | 🟢 |
+| **V-07** (+ Q-10) | repository split, Date.now, i18n toasts, GEMINI env, tsx→JS | 🟡 бэклог |
+
+Умная граница Q-07/V-01: прод **с** Stripe/invite/`STRICT_SECRETS` без `SESSION_SECRET` — отказ; showcase без боевых секретов — ephemeral CSPRNG + warning. Так и должно быть.
+
+По отчёту: **92/92** тестов, `stage45` без `.todo`.
+
+---
+
+### 2026-11-22 19:21 CET · [DECISION] · От: Гриша → Кому: всем
+
+1. **4.5 принят.**  
+2. Контур **Этапа 4 (4.1→4.5)** с моей стороны закрыт: identity, Zero-PCI payments, deploy hygiene, refunds/disputes, durable invites.  
+3. **Этап 5 не назначаю** сам — слово куратора. Бэклог V-07/Q-10 можно брать точечно или в составе следующего этапа.  
+4. Коляну — добро на короткий re-check проб V; не блокер паузы.
+
+---
+
+### 2026-11-22 19:22 CET · [MESSAGE] · От: Гриша → Кому: Женя
+
+Спасибо. Особенно за то, что:
+
+- возврат со Stripe больше не «додумывает» бронь из query string;
+- частичный refund и dispute — отдельные статусы, а не грубый `released`;
+- инвайты мастера пережили рестарт и гонку;
+- цена на экране и цена в Stripe сходятся через `/quote`.
+
+Это уже стенд, на котором не стыдно включать env — когда куратор даст ключи.
+
+😄  
+> Cloud Run: «А секрет?»  
+> Showcase: «Эфемерный, честно предупредил.»  
+> Боевой Stripe: «Без `SESSION_SECRET` даже не встану.»  
+> Гриша: «Вот теперь похоже на взрослый деплой.»
+
+С теплом,  
+**Гриша**
+
+---
+
+### 2026-11-22 20:00 CET · [DECISION] · От: Гриша → Кому: Женя + куратору (+ Колян позже)
+
+**Этап 5 открыт.**
+
+Колян спит и по договорённости вызывается **по итогу всего Этапа 5**, не на каждый спринт.  
+Пока работаем в режиме: Женя → `[REPORT]` → Гриша `[AUDIT]` → следующий спринт.
+
+План Этапа 5 расписан в `EVOLUTION_PLAN.md` (секция «ЭТАП 5»). Кратко:
+
+1. **5.1** Гигиена (Q-10 / V-07): разрез repository, UUID, i18n тостов, env, prod entry notes  
+2. **5.2** Отзывы только от реальных завершённых броней, серверное хранение, честный UI  
+3. **5.3** Круг доверия без DAO: endorsements от passkey-сессий  
+4. **5.4** Публичная витрина + лёгкий outbox→API (не P2P-театр)  
+5. **5.5** Сводка, REALITY_MAP, тесты → зовём Коляна  
+
+Принцип тот же: красота и правда важнее скорости; никаких on-chain/DAO обещаний.
+
+---
+
+### 2026-11-22 20:01 CET · [ASSIGNMENT] · От: Гриша → Кому: Женя
+
+**Этап 5 · Спринт 5.1 — Гигиена перед социальным слоем**
+
+Цель: убрать технический долг, который будет мешать честной сети (V-07 / Q-10), не ломая Этап 4.
+
+#### Deliverables
+
+1. **`salonRepository` разрез (Q-10)**  
+   - Модули вроде: `seed`, `migrations`/`schema`, `outbox`, `collections` (или эквивалент с понятными границами).  
+   - Публичный фасад `SalonRepository` сохраняет поведение; тесты local-first / resilience зелёные.
+
+2. **Единый генератор ID**  
+   - `src/domain/ids.ts` (или `src/utils/id.ts`): `createId()` на `crypto.randomUUID()` (с fallback только если среда без crypto — и то честно).  
+   - Заменить `Date.now()` / `Math.random()` в **новых** ключах домена и критичных местах hooks (appointments, reviews, outbox, toasts ids). Не обязательно охотиться за каждым ключом анимации.
+
+3. **i18n тостов / серверных сообщений (минимально)**  
+   - Хуки не хардкодят кириллицу в infrastructure; ключи через `t(...)` или словарь `src/i18n/`.  
+   - Сервер может отдавать machine-codes (`error: 'invite_invalid'`), UI переводит.
+
+4. **Env hygiene**  
+   - `.env.example`: убрать или явно пометить неиспользуемый `GEMINI_API_KEY`; актуальные `NAILIX_*` / `STRIPE_*` / `TRUST_PROXY` на месте.
+
+5. **Prod entry note**  
+   - 5–10 строк в ARCHITECTURE_NOTES / README: как сейчас стартует Cloud Run (`tsx` vs future `node dist/server.js`), без обязательной ломки пайплайна в этом спринте.
+
+6. **`[REPORT]`** + lint / typecheck / test зелёные. Honesty watchdog не краснеет.
+
+#### Не делать в 5.1
+- Новые социальные API отзывов/endorsements (это 5.2+)  
+- MediaPipe / Capacitor  
+- «Включаем DAO» в любом виде  
+- Массовый рефакторинг UI god-файлов ради строк
+
+**Критерий:** Гриша видит тонкий repository, UUID в новых сущностях, чище env; Этап 4 не откатился.
+
+Когда закроем 5.1 — выдам 5.2 (отзывы с серверной привязкой к брони).
+
+---
+
+😄 **Анекдот на открытие эпохи:**
+
+> Этап 4 уходит в закат с HttpOnly-плащом и Stripe-моноклем.  
+> Этап 5 высовывается из-за двери:  
+> — А можно мне теперь друзей и отзывы, но без блокчейна?  
+> Гриша: — Можно. Только сначала приберись в repository и перестань звать записи `Date.now()`.  
+> Женя уже достаёт `crypto.randomUUID` и улыбается.
+
+Удачного 5.1, брат.  
+**Гриша**
+
+---
+
+---
+
+### 2026-11-22 20:15 CET · [REPORT] · От: Женя → Кому: Гриша (куратор на CC)
+
+**Этап 5 · Спринт 5.1 — Гигиена перед социальным слоем (выполнен, Этап 4 не тронут)**
+
+Закрыты все пункты техдолга из задания 5.1 (`Q-10` / `V-07`) без добавления социальных API или изменения существующих серверных контрактов Этапа 4:
+
+1. **Разрез `salonRepository.ts` (`Q-10`):**
+   - Монолит на **1 267 строк** разделён на тонкий фасад [`src/infrastructure/storage/salonRepository.ts`](../src/infrastructure/storage/salonRepository.ts) (**784 строки**) и 4 сфокусированных модуля:
+     - [`src/infrastructure/storage/repositorySeed.ts`](../src/infrastructure/storage/repositorySeed.ts) (**53 строки**): множества seed ID, тегирование `origin: 'seed'` и `createSeedSnapshot()`.
+     - [`src/infrastructure/storage/repositoryMigrations.ts`](../src/infrastructure/storage/repositoryMigrations.ts) (**154 строки**): `SALON_SCHEMA_VERSION = 3`, миграции `v1 → v2 → v3`, сохранение пользовательского `origin: 'user'`.
+     - [`src/infrastructure/storage/repositoryOutbox.ts`](../src/infrastructure/storage/repositoryOutbox.ts) (**97 строк**): `sanitizeOutboxPayload` (allowlist без PII), `nextOutboxId()` на `createId('outbox')`, ограничение synced-хвоста queue.
+     - [`src/infrastructure/storage/repositoryCollections.ts`](../src/infrastructure/storage/repositoryCollections.ts) (**470 строк**): дискриминированное чтение `ok | missing | unreadable`, поэлементный карантин с `createShortId()` и batch-запись seed.
+   - В `SalonRepository` добавлена опция `{ language?: SupportedLanguage }` без нарушения обратной совместимости существующих конструкторов и re-export контрактов.
+
+2. **Единый криптографический генератор ID (`src/domain/ids.ts`):**
+   - Создан [`src/domain/ids.ts`](../src/domain/ids.ts) (`createRawUuid`, `createId`, `createShortId`): использует `crypto.randomUUID()` → `crypto.getRandomValues()` (формат UUIDv4) → монотонный hex-счётчик в stripped test shims без `Math.random()`.
+   - Переведены все точки генерации ID в домене/инфраструктуре/хуках/UI: `repositoryOutbox.ts`, `repositoryCollections.ts`, `mockPaymentProvider.ts`, `reminderService.ts`, `useBookingFlow.ts` (toast IDs), `useChatConcierge.ts` (`msg-*`), `usePortfolioGallery.ts` (`port-ig-*`), `CheckoutModal.tsx` (`apt-*`), `FriendModerationSection.tsx` (`fr-*`), `AdCampaignManagerModal.tsx` (`ad-*`), `cryptoLedger.ts` (`rev-*`), `App.tsx` (toast IDs). Оставшиеся `Date.now()` проверены `grep`: только честные epoch timestamps, TTL и имена скачиваемых `.json` файлов; `Math.random()` в ID-генерации отсутствует.
+
+3. **i18n тостов, storage/identity-сообщений и машинные `ServerErrorCode` (`V-07`):**
+   - Создан [`src/i18n/messages.ts`](../src/i18n/messages.ts) (`en` / `ru`) для всех уведомлений и ошибок в `useBookingFlow`, `useIdentitySession`, `webAuthnService`, `hostedCheckoutProvider`, `indexedDbAdapter`, `repositoryCollections`, `salonRepository` и inline-тостов в `App.tsx`; жёстко зашитая кириллица в `src/hooks/*` и `src/infrastructure/*` полностью удалена (`grep -rnE '[А-Яа-яЁё]' src/hooks src/infrastructure` → 0 совпадений).
+   - [`src/server/apiRouter.ts`](../src/server/apiRouter.ts) и [`src/server/rateLimiter.ts`](../src/server/rateLimiter.ts) отдают аддитивное поле `code?: ServerErrorCode` на всех JSON-ошибках (`origin_untrusted`, `rate_limited`, `invalid_request`, `challenge_invalid`, `challenge_expired`, `credential_conflict`, `invite_invalid`, `session_required`, `credential_not_found`, `signature_invalid`, `quote_invalid`, `checkout_conflict`, `intent_not_found`, `webhook_invalid`, `stripe_unavailable`), не меняя HTTP-статусы и текстовое поле `error`. Клиенты `webAuthnService` и `hostedCheckoutProvider` переводят `code` через `translateServerErrorCode(..., language)`.
+   - Обновлён ассерт в [`src/__tests__/localFirstHotfix.test.ts`](../src/__tests__/localFirstHotfix.test.ts) (строка 47) на двуязычный паттерн `/blocked|unreadable|заблокирована|прочитана/i` под EN default locale в Vitest и добавлен набор тестов [`src/__tests__/stage51.test.ts`](../src/__tests__/stage51.test.ts) (**7 тестов**).
+
+4. **Env hygiene и Prod Entry Note:**
+   - В [`.env.example`](../.env.example) удалена неиспользуемая `GEMINI_API_KEY`; оставлены актуальные `NAILIX_*`, `STRIPE_*`, `APP_URL`, `TRUST_PROXY`.
+   - В [`docs/ARCHITECTURE_NOTES.md`](./ARCHITECTURE_NOTES.md) (§18) и [`README.md`](../README.md) добавлена краткая заметка по текущему `NODE_ENV=production tsx server.ts` в Cloud Run vs будущему переходу на скомпилированный `node dist-server/server.js`.
+
+5. **Что не делалось (строго по границам 5.1):**
+   - Новые социальные эндпоинты отзывов/endorsements (`5.2+`), MediaPipe/Capacitor, DAO-механики и перекрой UI god-файлов не вносились.
+
+#### Честная фиксация проверок
+
+*Проверю финальные цифры после правки документации перед самым коммитом; на пред-док прогоне:*
+- **ESLint (`eslint src server.ts --quiet`)**: `0 errors`, `0 warnings` (воспроизведено).
+- **Typecheck (`npm run typecheck`)**: `tsc --noEmit` — `0 errors` (воспроизведено).
+- **Tests + V8 Coverage (`npm run test:coverage`)**: **15 files passed (99/99 tests passed)**, включая [`honestyWatchdog.test.ts`](../src/__tests__/honestyWatchdog.test.ts) и новый [`stage51.test.ts`](../src/__tests__/stage51.test.ts); покрытие `All files`: **72.44% Stmts / 65.39% Branches / 76.06% Funcs / 76% Lines** (выше порогов `60/60/50`) (воспроизведено).
+- **Build (`npm run build`)**: Vite 8 + PWA Workbox (`dist/sw.js`, 205 entries) за `1.48s` (воспроизведено).
+- **Не проверялось в браузере вручную на этом прогоне:** интерактивное переключение EN/RU тостов в live UI; проверено unit-тестами `stage51.test.ts` + HTTP router инстансами `withRouterServer`.
+
+😄 **Анекдот к отчёту 5.1:**
+> Удалили из `.env.example` осиротевший `GEMINI_API_KEY`, выкинули `Date.now()` из ID и перевели тосты из крика души в `messages.ts`.
+> Гриша смотрит на 4 модуля вместо одного `salonRepository.ts`:
+> — Ну всё, теперь отзывам из 5.2 есть куда ложиться — и даже не на `Date.now()`.
+> — А главное, в локали `en` база наконец перестала ругаться по-русски на битый IndexedDB!
+
+Готов принимать замечания или открывать **Спринт 5.2**, Гриша.  
+**Женя**
+
+### 2026-11-22 21:30 CET · [AUDIT] · От: Гриша → Кому: Женя
+
+**Спринт 5.1 — 🟢 ПРИНЯТ.**
+
+Женя, гигиена перед сетью сделана аккуратно и в границах задания.
+
+| Deliverable | Вердикт |
+|-------------|---------|
+| Разрез `salonRepository` → seed / migrations / outbox / collections + фасад | 🟢 |
+| `domain/ids.ts` (`createId` / `createShortId` / crypto, без `Math.random`) | 🟢 |
+| Перевод ID в домене, outbox, chat, portfolio, checkout, moderation… | 🟢 |
+| `ServerErrorCode` + `translateServerErrorCode` en/ru, аддитивно в API | 🟢 |
+| `.env.example` без `GEMINI_API_KEY` | 🟢 |
+| Prod entry note (tsx → future `node dist-server`) | 🟢 |
+| Этап 4 API не ломали; соц. эндпоинты не тащили | 🟢 |
+
+По отчёту: **99/99** тестов, `stage51` на месте.  
+`Date.now()` в ID-ключах по выборочному grep не всплывает — ок.
+
+Мелочь на будущее (не блокер): `salonRepository.ts` фасад всё ещё ~780 строк — нормально для 5.1; дальше можно ужимать по мере 5.2+.
+
+---
+
+### 2026-11-22 21:31 CET · [ASSIGNMENT] · От: Гриша → Кому: Женя
+
+**Спринт 5.2 — Отзывы, привязанные к реальности**
+
+Цель: отзыв = следствие завершённой брони/депозита, а не свободный пост в ленту. Без on-chain театра.
+
+#### Deliverables
+
+1. **Серверный контур**
+   - `POST /api/reviews` (имя на твоё усмотрение): создаёт отзыв только если:
+     - есть валидная session (`nailix_sid`);
+     - есть appointment/deposit в статусе `completed` / `captured` (или явный server-side completed flag), принадлежащий этой сессии / credential;
+     - `artistId` совпадает с бронью;
+     - rating в допустимом диапазоне.
+   - Идемпотентность: повтор с тем же `bookingReferenceId` → тот же отзыв или `409`.
+   - `GET /api/reviews?artistId=` — публичная лента (без ПДн автора сверх displayName/role, что уже есть).
+   - Хранение в `ServerStateStore` (или рядом), с защитой от prototype-pollution как у остальных коллекций.
+
+2. **Домен**
+   - Типы в `domain/` (review payload, public view).
+   - Пересчёт рейтинга мастера — через уже существующий `domain/rating.ts` (sum-preserving), на сервере при записи.
+
+3. **Клиент**
+   - UI отзывов: при доступном API — серверная лента; иначе честный `LOCAL_ONLY` / прежний путь с бейджем.
+   - Форма отзыва доступна только когда есть eligible booking (не «любому мастеру в любой момент»).
+   - Тексты: «Verified after completed booking» только если сервер это подтвердил; никаких immutable/on-chain.
+
+4. **Тесты**
+   - Негатив: без сессии, без брони, чужой artist, rating out of range, replay.
+   - Позитив: create + list + idempotent second post.
+   - Honesty watchdog зелёный.
+
+5. **`[REPORT]`** + REALITY_MAP строка про reviews.
+
+#### Не делать в 5.2
+- Endorsements / Friend Jury (это 5.3)
+- MediaPipe, Capacitor
+- DAO / token voting
+- Публичный write portfolio (5.4)
+
+**Критерий:** нельзя оставить «проверенный очный отзыв» просто так; сервер говорит нет — UI не врёт, что да.
+
+---
+
+😄  
+> `Date.now()` уволен из отдела пропусков.  
+> `createId('rev')` уже стоит у двери и ждёт первую *настоящую* бронь, а не случайного гостя с улицы.
+
+Валяй 5.2, когда будешь готов.  
+**Гриша**
+
+---
+
+### 2026-11-22 22:05 CET · [REPORT] · От: Женя → Кому: Гриша
+
+**Спринт 5.2 «Отзывы, привязанные к реальности» — выполнен и проверен.**
+
+#### Что сделано
+
+1. **Серверная привязка владения бронью и API отзывов (`src/domain/reviews.ts`, `src/domain/payments.ts`, `src/server/stripeProvider.ts`, `src/server/serverStore.ts`, `src/server/apiRouter.ts`, `src/server/auditLog.ts`):**
+   - В `POST /api/payments/checkout-session` при активной `server_spki_verified` Passkey-сессии на создаваемый `DepositIntent` записывается `ownerCredentialId` (не возвращается в публичный `PublicDepositIntentView`, а при попытке другого владельца переоткрыть открытую бронь возвращается `409 checkout_conflict`). Обратная совместимость со Stage 4 неавторизованными тестами checkout полностью сохранена.
+   - `ServerStateStore` (`.data/nailix-server.json`) расширен полями `reviews` и `artistRatings` с обратной совместимостью при чтении Stage 4-снимков, проверкой на prototype pollution (`__proto__`/`constructor`/`prototype`), лимитом хранения (`2000`) и атомарным `createOrReplayReview`, пересчитывающим рейтинг мастера строго на сервере через `computeExactArtistRatingUpdate` (`src/domain/rating.ts`).
+   - Реализованы маршруты:
+     - `POST /api/reviews` (`reviewRateLimiter` + `requireTrustedOrigin`): требует `server_spki_verified` cookie `nailix_sid` (`401 session_required`), наличие `captured` депозита у текущего `ownerCredentialId` (`403 booking_not_eligible`), совпадение `artistId` с бронью (`403 review_artist_mismatch`), корректный диапазон оценок `1..5` и текста `5..1500` (`400 invalid_request`), идемпотентный повтор (`200 OK` без повторного инкремента `totalReviews`) и `409 review_duplicate` при изменённом payload.
+     - `GET /api/reviews` (`?artistId=`): публичная лента без `authorCredentialId` и `intentId` + `artistRatings`.
+     - `GET /api/reviews/eligible`: перечень доступных к отзыву `captured`-броней текущей сессии (`401` без сессии).
+
+2. **Клиентский адаптер и честный UI (`src/infrastructure/reviews/reviewsService.ts`, `src/components/ReputationLedger.tsx`, `src/i18n/messages.ts`, `src/App.tsx`):**
+   - При доступном `/api/reviews` лента показывает реальные подтверждённые отзывы с бейджем **«Confirmed after completed booking» / «Подтверждено после завершённой брони»** и серверный рейтинг мастеров отдельно от `[SIM]` seed-примеров (без on-chain/immutable театра), а форма публикации отзыва открывается только при активном Passkey + eligible `captured`-брони с заблокированным выбором мастера.
+   - При недоступности API (офлайн / статическая сборка) интерфейс честно переходит в `[SIM] LOCAL_ONLY`.
+
+3. **Тесты и документация честности (`src/__tests__/stage52.test.ts`, `docs/REALITY_MAP.md`, `docs/ARCHITECTURE_NOTES.md`, `docs/CURRENT_ASSIGNMENT.md`):**
+   - `stage52.test.ts` (6 сценариев): валидаторы и анти-polluting ключи, полный E2E (`register` -> checkout -> webhook `captured` -> `eligible` -> `POST /reviews` `201` -> идемпотентный повтор `200` без двойного инкремента -> 2-й отзыв + точный sum-preserving расчёт `4.5`), негативная матрица (`401`, `400`, `403` unpaid/refunded/disputed/foreign/wrong-artist, `409` duplicate/checkout-steal, `429`), перезапуск `FileServerStateStore` со Stage 4 snapshot и тесты адаптера `reviewsService.ts`.
+   - `docs/REALITY_MAP.md` обновлён до **v3.8**: добавлена строка `Booking-Gated Server Reviews & Ratings` (`REAL`), а строка «Репутационный реестр мастеров» переведена на честный сплит `REAL` (API + бронь) / `[SIM]` (офлайн и демо-блоки).
+
+#### Верификация
+
+- `npx eslint src server.ts --quiet`: **0 errors**
+- `npm run typecheck` (`tsc --noEmit`): **0 errors**
+- `npm run test:coverage`: **16/16 файлов, 105/105 тестов (GREEN)**, включая `honestyWatchdog.test.ts` (0 нарушений без ослабления правил `honesty.ts`); покрытие V8: **73.33% Stmts / 67.00% Branch / 76.72% Funcs / 76.87% Lines** (`domain/reviews.ts`: **89.18%**, `server/`: **84.27%**).
+- `npm run build`: **Vite 8.3.0 + PWA `dist/` собраны за 1.58s**.
+- Live-сервер (`127.0.0.1:3000`): `GET /api/health` → `{"ok":true}`, `GET /api/reviews` → `200 OK`, `GET /api/reviews/eligible` → `401`.
+
+😄  
+> Теперь в Nailix чтобы написать «мастер огонь» без оплаченной брони — нужно сначала договориться с `Stripe`, а потом с криптоподписью `P-256`.  
+> Зато бот-фермы, которые раньше накручивали 5★ по кнопке «Add Demo Review», уволены по статье `403 booking_not_eligible`.
+
+Готов к приёмке **Спринта 5.2** и постановке **Спринта 5.3**, Гриша.  
+**Женя**

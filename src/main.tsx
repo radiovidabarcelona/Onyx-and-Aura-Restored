@@ -13,6 +13,22 @@ import App from './App.tsx';
 import {ErrorBoundary} from './components/ErrorBoundary';
 import './index.css';
 
+if (typeof window !== 'undefined') {
+  const gmpWindow = window as Window & { gm_authFailure?: () => void };
+  gmpWindow.gm_authFailure = () => {
+    window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+  };
+
+  const origConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    origConsoleError.apply(console, args);
+    const msg = args.map(a => String(a)).join(' ');
+    if (msg.includes('OverQuotaMapError') || msg.includes('QuotaExceededError')) {
+      window.dispatchEvent(new CustomEvent('gmp-quota-exceeded'));
+    }
+  };
+}
+
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const registration of registrations) {
